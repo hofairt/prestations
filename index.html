@@ -194,7 +194,7 @@ select option{background:var(--surface);}
     </div>
     <div class="field">
       <label>Date</label>
-      <input type="date" id="f-date">
+      <input type="date" id="f-date" oninput="onDateChange()">
     </div>
     <div class="field">
       <label>Aard prestatie</label>
@@ -231,22 +231,14 @@ select option{background:var(--surface);}
     <div class="amp-box" id="amp-box">Amplitude : —</div>
     <div class="sal-prev" id="sal-prev"><strong id="sp-amt">—</strong><span id="sp-det"></span></div>
 
-    <!-- SPECIAL OPTIONS -->
-    <div class="field" id="opts-field">
-      <label>Options supplémentaires</label>
-      <div style="background:var(--surface2);border-radius:var(--r);padding:10px 14px;">
-        <div class="check-row">
-          <input type="checkbox" id="opt-dim" onchange="calcAll()">
-          <label for="opt-dim">Travail du dimanche (sans récup dans 6j)</label>
-          <span class="amount">+137,34 €</span>
-        </div>
-        <div class="check-row">
-          <input type="checkbox" id="opt-ferie" onchange="calcAll()">
-          <label for="opt-ferie">Jour férié</label>
-          <span class="amount">+137,34 €</span>
-        </div>
-
-      </div>
+    <!-- AUTO INFO BOX -->
+    <div id="info-sunday" style="display:none;background:var(--purple-bg);border-radius:var(--r);padding:10px 14px;margin-bottom:13px;font-size:13px;color:var(--purple);line-height:1.5">
+      <strong style="display:block;margin-bottom:2px">Dimanche détecté</strong>
+      Prime 30/50 € nette automatique. Le sursalaire +137,34 € sera calculé automatiquement selon si vous avez un jour off ou une inactivité étranger dans les 6 jours suivants.
+    </div>
+    <div id="info-holiday" style="display:none;background:var(--red-bg);border-radius:var(--r);padding:10px 14px;margin-bottom:13px;font-size:13px;color:var(--red);line-height:1.5">
+      <strong style="display:block;margin-bottom:2px">Jour férié belge détecté</strong>
+      Sursalaire +137,34 € appliqué automatiquement.
     </div>
 
     <div class="row2">
@@ -333,6 +325,8 @@ select option{background:var(--surface);}
     <div class="ps">
       <h3>Indemnités & suppléments</h3>
       <div class="field"><label>Indemnité RGPT (€/h)</label><input type="number" id="p-rgpt" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Prime dimanche &lt;6h (€, net)</label><input type="number" id="p-pdim6" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Prime dimanche ≥6h (€, net)</label><input type="number" id="p-pdim12" step="0.01" oninput="saveSettings()"></div>
       <div class="field"><label>Sursalaire dimanche / férié (€)</label><input type="number" id="p-dim" step="0.01" oninput="saveSettings()"></div>
       <div class="field"><label>Jour inactivité étranger (€)</label><input type="number" id="p-etr" step="0.01" oninput="saveSettings()"></div>
       <div class="field"><label>Prestation &lt;6h à l'étranger (€)</label><input type="number" id="p-etr6" step="0.01" oninput="saveSettings()"></div>
@@ -373,6 +367,7 @@ const DEF = {
   dep1:83.39,    // déplacement <6h autre véhicule
   dep2:113.08,   // déplacement >6h autre véhicule
   anc:2.68, ancEnabled:false,
+  primeDim6:30,primeDim12:50,
   multi:{11:111.75,12:123.24,13:134.87,14:146.40,15:157.99,16:169.61,17:181.02,18:192.69,19:204.15,20:215.80,21:227.41}
 };
 
@@ -397,6 +392,8 @@ function saveSettings(){
   s.nom=document.getElementById('p-nom').value;
   s.s1=g('p-s1')||DEF.s1; s.s2=g('p-s2')||DEF.s2; s.s3=g('p-s3')||DEF.s3;
   s.rgpt=g('p-rgpt')||DEF.rgpt;
+  s.primeDim6=g('p-pdim6')||DEF.primeDim6;
+  s.primeDim12=g('p-pdim12')||DEF.primeDim12;
   s.dim=g('p-dim')||DEF.dim;
   s.etr=g('p-etr')||DEF.etr;
   s.etr6=g('p-etr6')||DEF.etr6;
@@ -421,7 +418,60 @@ function setAnc(v){
 // Special fixed-rate prestations (don't use amplitude-based table)
 const SPECIAL_TYPES=['Travail de garage ≤6h30','Travail de garage 6h31–8h','Déplacement <6h autre véhicule','Déplacement >6h autre véhicule','Prestation <6h à l\'étranger'];
 
-function calcSal(p,s){
+// ===================================================
+// BELGIAN PUBLIC HOLIDAYS
+// ===================================================
+function getBelgianHolidays(year){
+  // Easter calculation (Anonymous Gregorian algorithm)
+  const a=year%19,b=Math.floor(year/100),c=year%100;
+  const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m+114)/31)-1;
+  const day=((h+l-7*m+114)%31)+1;
+  const easter=new Date(year,month,day);
+  const d2s=d=>d.toISOString().substring(0,10);
+  const add=n=>{const d=new Date(easter);d.setDate(d.getDate()+n);return d2s(d);};
+  return new Set([
+    year+'-01-01', // Nouvel An
+    add(1),        // Lundi de Pâques
+    year+'-05-01', // Fête du Travail
+    add(39),       // Ascension
+    add(50),       // Lundi de Pentecôte
+    year+'-07-21', // Fête Nationale
+    year+'-08-15', // Assomption
+    year+'-11-01', // Toussaint
+    year+'-11-11', // Armistice
+    year+'-12-25', // Noël
+  ]);
+}
+function isHoliday(dateStr){
+  const year=parseInt(dateStr.substring(0,4));
+  return getBelgianHolidays(year).has(dateStr);
+}
+function isSunday(dateStr){
+  return new Date(dateStr+'T00:00:00').getDay()===0;
+}
+
+// Check if a sunday has a recuperation day (off day or inactivité étranger) within 6 days after
+function hasSundayRecup(p, allData){
+  if(!p.date) return false;
+  const base = new Date(p.date+'T00:00:00');
+  for(let i=1;i<=6;i++){
+    const d = new Date(base);
+    d.setDate(d.getDate()+i);
+    const ds = d.toISOString().substring(0,10);
+    // A "jour off" = no prestation at all on that date
+    // OR a prestation of type "inactivité à l'étranger"
+    const dayPrests = allData.filter(x=>x.date===ds);
+    if(dayPrests.length===0) return true; // off day found
+    if(dayPrests.some(x=>x.aard&&x.aard.includes('inactivit'))) return true;
+  }
+  return false; // no recup found in 6 days → sursalaire applies
+}
+
+function calcSal(p,s,allData){
   const ampH=p.ampMin/60;
   let base=0,detail='',rgpt=ampH*s.rgpt;
 
@@ -429,45 +479,85 @@ function calcSal(p,s){
   // Jour d'inactivité à l'étranger: fixed forfait, no RGPT, no dimanche/ferie
   if(type.includes("inactivit")){
     const base=s.etr;
-    return{base,rgpt:0,extras:0,anc:0,total:base,detail:'Inactivité étranger forfait '+base.toFixed(2)+'€',extraDetail:[]};
+    return{base,rgpt:0,extras:0,extrasNet:0,anc:0,total:base,totalBrut:base,totalNet:0,detail:'Inactivité étranger forfait '+base.toFixed(2)+'€',extraDetail:[]};
   }
   // Fixed-rate special types
-  if(type.includes('Travail de garage ≤6h30')||type.includes('garage') && ampH<=6.5){
-    base=s.gar1; detail=`Garage ≤6h30 → ${s.gar1.toFixed(2)}€`;
-  } else if(type.includes('Travail de garage 6h31')||type.includes('garage')){
-    base=s.gar2; detail=`Garage 6h31–8h → ${s.gar2.toFixed(2)}€`;
-  } else if(type.includes('Déplacement <6h')||type.includes('Déplacement <6h autre')){
-    base=s.dep1; detail=`Dépl. <6h autre véh. → ${s.dep1.toFixed(2)}€`;
-  } else if(type.includes('Déplacement >6h')||type.includes('Déplacement >6h autre')){
-    base=s.dep2; detail=`Dépl. >6h autre véh. → ${s.dep2.toFixed(2)}€`;
+  if(type.includes('Travail de garage ≤6h30')){
+    base=s.gar1; detail='Garage ≤6h30 → '+s.gar1.toFixed(2)+'€';
+  } else if(type.includes('Travail de garage 6h31')){
+    base=s.gar2; detail='Garage 6h31–8h → '+s.gar2.toFixed(2)+'€';
+  } else if(type.includes('Déplacement <6h')){
+    base=s.dep1; detail='Dépl. <6h autre véh. → '+s.dep1.toFixed(2)+'€';
+  } else if(type.includes('Déplacement >6h')){
+    base=s.dep2; detail='Dépl. >6h autre véh. → '+s.dep2.toFixed(2)+'€';
   } else if(type.includes('étranger')&&ampH<6){
-    base=s.etr6; detail=`Prest. <6h étranger → ${s.etr6.toFixed(2)}€`;
-    // RGPT still applies on top
+    base=s.etr6; detail='Prest. <6h étranger → '+s.etr6.toFixed(2)+'€';
   } else if(p.cat==='solo'){
-    if(ampH<=6){base=s.s1;detail=`1 chauf. ≤6h → ${s.s1.toFixed(2)}€`;}
-    else if(ampH<=12){base=s.s2;detail=`1 chauf. 6h01–12h → ${s.s2.toFixed(2)}€`;}
-    else{const ex=ampH-12;base=s.s2+ex*s.s3;detail=`1 chauf. >12h → ${s.s2.toFixed(2)}+${ex.toFixed(2)}h×${s.s3}€`;}
+    if(ampH<=6){base=s.s1;detail='1 chauf. ≤6h → '+s.s1.toFixed(2)+'€';}
+    else if(ampH<=12){base=s.s2;detail='1 chauf. 6h01–12h → '+s.s2.toFixed(2)+'€';}
+    else{const ex=ampH-12;base=s.s2+ex*s.s3;detail='1 chauf. >12h → '+s.s2.toFixed(2)+'+'+ex.toFixed(2)+'h×'+s.s3+'€';}
   } else {
-    // Double équipage: heure DÉBUTÉE = heure entière (Math.ceil)
     const h=Math.min(21,Math.max(11,Math.ceil(ampH)));
     base=s.multi[h]||s.multi[21];
-    detail=`Dbl équip. ${h}h (ceil) → ${base.toFixed(2)}€`;
+    detail='Dbl équip. '+h+'h → '+base.toFixed(2)+'€';
   }
 
-  let extras=0,extraDetail=[];
-  if(p.optDim){extras+=s.dim;extraDetail.push(`Dim/férié +${s.dim.toFixed(2)}€`);}
-  if(p.optFerie){extras+=s.dim;extraDetail.push(`Férié +${s.dim.toFixed(2)}€`);}
-  const anc=s.ancEnabled?s.anc:0;
-  if(anc>0)extraDetail.push(`Anc. +${anc.toFixed(2)}€`);
+  // Auto-detect sunday and holidays from date
+  const dateStr=p.date||'';
+  const dayIsSunday=dateStr?isSunday(dateStr):false;
+  const dayIsHoliday=dateStr?isHoliday(dateStr):false;
+  const safeAllData=allData||[];
 
-  const total=base+rgpt+extras+anc;
-  return{base,rgpt,extras,anc,total,detail,extraDetail};
+  // BRUT extras (ONSS)
+  let extras=0,extraDetail=[];
+
+  // Sursalaire dimanche: auto if sunday AND no recup in 6 days
+  if(dayIsSunday){
+    const recup=hasSundayRecup(p,safeAllData);
+    if(!recup){
+      extras+=s.dim;
+      extraDetail.push('Sursalaire dim. +'+s.dim.toFixed(2)+'€ brut (sans récup)');
+    } else {
+      extraDetail.push('Récup. trouvée → pas de sursalaire dim.');
+    }
+  }
+
+  // Sursalaire férié (auto-detected)
+  if(dayIsHoliday){
+    extras+=s.dim;
+    extraDetail.push('Sursalaire férié +'+s.dim.toFixed(2)+'€ brut');
+  }
+
+  // NET extras (not ONSS)
+  let extrasNet=0,extraDetailNet=[];
+  // Prime dimanche: ALWAYS on sundays, 30€ <6h, 50€ >=6h
+  if(dayIsSunday){
+    const prime=ampH<6?s.primeDim6:s.primeDim12;
+    extrasNet+=prime;
+    extraDetailNet.push('Prime dim. '+prime.toFixed(2)+'€ net (systématique)');
+  }
+
+  const anc=s.ancEnabled?s.anc:0;
+  if(anc>0)extraDetail.push('Anc. +'+anc.toFixed(2)+'€ brut');
+
+  const totalBrut=base+extras+anc;
+  const totalNet=rgpt+extrasNet;
+  const total=totalBrut+totalNet;
+  return{base,rgpt,extras,extrasNet,anc,total,totalBrut,totalNet,detail,extraDetail,extraDetailNet,dayIsSunday,dayIsHoliday};
 }
 
-function calcMonthly(data,s){
-  let tBase=0,tRgpt=0,tExtras=0,tAnc=0;
-  const rows=data.map(p=>{const r=calcSal(p,s);tBase+=r.base;tRgpt+=r.rgpt;tExtras+=r.extras;tAnc+=r.anc;return{p,r};});
-  return{tBase,tRgpt,tExtras,tAnc,total:tBase+tRgpt+tExtras+tAnc,rows};
+function calcMonthly(data,s,allData){
+  let tBase=0,tRgpt=0,tExtras=0,tExtrasNet=0,tAnc=0;
+  // allData = full dataset across all months, needed for sunday recup check
+  const fullData=allData||data;
+  const rows=data.map(p=>{
+    const r=calcSal(p,s,fullData);
+    tBase+=r.base;tRgpt+=r.rgpt;tExtras+=r.extras;tExtrasNet+=r.extrasNet;tAnc+=r.anc;
+    return{p,r};
+  });
+  const totalBrut=tBase+tExtras+tAnc;
+  const totalNet=tRgpt+tExtrasNet;
+  return{tBase,tRgpt,tExtras,tExtrasNet,tAnc,totalBrut,totalNet,total:totalBrut+totalNet,rows};
 }
 
 // ===================================================
@@ -476,6 +566,15 @@ function calcMonthly(data,s){
 function pt(t){if(!t)return null;const[h,m]=t.split(':').map(Number);return h*60+m;}
 function mtos(mins){if(mins<=0)return'—';const h=Math.floor(mins/60),m=mins%60;return h+'h'+(m>0?String(m).padStart(2,'0'):'');}
 
+// Collect all stored prestations across all months for sunday recup logic
+function getAllData(){
+  let all=[];
+  Object.keys(localStorage).filter(k=>k.startsWith('p_')).forEach(k=>{
+    try{all=all.concat(JSON.parse(localStorage.getItem(k)||'[]'));}catch{}
+  });
+  return all;
+}
+
 function calcAll(){
   const b=pt(document.getElementById('f-beg').value);
   const e=pt(document.getElementById('f-ein').value);
@@ -483,10 +582,10 @@ function calcAll(){
   let mins=e-b; if(mins<0)mins+=1440;
   document.getElementById('amp-box').textContent='Amplitude : '+mtos(mins);
   const s=loadS();
-  const fp={cat:formCat,ampMin:mins,aard:document.getElementById('f-aard').value,
-    optDim:document.getElementById('opt-dim').checked,
-    optFerie:document.getElementById('opt-ferie').checked};
-  const r=calcSal(fp,s);
+  const fp={cat:formCat,ampMin:mins,date:document.getElementById('f-date').value,
+    aard:document.getElementById('f-aard').value,
+    optDim:false,optFerie:false};
+  const r=calcSal(fp,s,getAllData());
   const sp=document.getElementById('sal-prev');
   sp.style.display='block';
   document.getElementById('sp-amt').textContent=r.total.toFixed(2)+' €';
@@ -497,17 +596,32 @@ function calcAll(){
 // ===================================================
 // FORM
 // ===================================================
-function onAardChange(){
-  const v=document.getElementById('f-aard').value;
-  const isInactif=v.includes('inactivit')||v.toLowerCase().includes('inactivit');
-  const optsField=document.getElementById('opts-field');
-  if(optsField) optsField.style.display=isInactif?'none':'block';
+function updateFormState(){
+  const dateVal=document.getElementById('f-date').value;
+  const aardVal=document.getElementById('f-aard').value;
+  const isInactif=aardVal.includes('inactivit');
+  const sun=dateVal?isSunday(dateVal):false;
+  const hol=dateVal?isHoliday(dateVal):false;
+
+  // Info boxes
+  document.getElementById('info-sunday').style.display=(sun&&!isInactif)?'block':'none';
+  document.getElementById('info-holiday').style.display=(hol&&!isInactif)?'block':'none';
+
+
+
+  // Show "empty" message if no options available
+  if(optsEmpty){
+    const hasOpts=sun&&!isInactif;
+    optsEmpty.style.display=hasOpts?'none':'block';
+  }
+
   if(isInactif){
-    document.getElementById('opt-dim').checked=false;
-    document.getElementById('opt-ferie').checked=false;
+  
   }
   calcAll();
 }
+function onAardChange(){ updateFormState(); }
+function onDateChange(){ updateFormState(); }
 function setCat(c){
   formCat=c;
   document.getElementById('cat-solo').classList.toggle('active',c==='solo');
@@ -522,12 +636,12 @@ function clearForm(){
   document.getElementById('f-aard').value='';
   document.getElementById('f-comment').value='';
   ['f-beg','f-ein','f-kd','f-ka','f-pd','f-pa','f-pers','f-bus','f-plaat','f-dagen'].forEach(id=>document.getElementById(id).value='');
-  ['opt-dim','opt-ferie'].forEach(id=>document.getElementById(id).checked=false);
   document.getElementById('amp-box').textContent='Amplitude : —';
   document.getElementById('sal-prev').style.display='none';
   document.getElementById('form-title').textContent='Nouvelle prestation';
   editingId=null;
   setCat('solo');
+  updateFormState();
 }
 let editingId=null;
 function savePrest(){
@@ -541,8 +655,7 @@ function savePrest(){
     aard:document.getElementById('f-aard').value||'Service',
     comment:document.getElementById('f-comment').value,
     cat:formCat,
-    optDim:document.getElementById('opt-dim').checked,
-    optFerie:document.getElementById('opt-ferie').checked,
+    optFerie:false,
     begin:b,einde:e,ampMin,amplitude:mtos(ampMin),
     kmDep:document.getElementById('f-kd').value,
     kmArr:document.getElementById('f-ka').value,
@@ -597,10 +710,10 @@ function editPrest(id){
   document.getElementById('f-bus').value=found.bus||'';
   document.getElementById('f-plaat').value=found.plaat||'';
   document.getElementById('f-dagen').value=found.dagen||'';
-  document.getElementById('opt-dim').checked=found.optDim||false;
-  document.getElementById('opt-ferie').checked=found.optFerie||false;
+
+
   setCat(found.cat||'solo');
-  calcAll();
+  updateFormState();
   showPage('add');
 }
 function delPrest(id){
@@ -612,7 +725,7 @@ function delPrest(id){
 // RENDER LIST
 // ===================================================
 function renderList(){
-  const data=load(),s=loadS(),el=document.getElementById('prest-list');
+  const data=load(),el=document.getElementById('prest-list');
   if(!data.length){
     el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="13" y2="17"/></svg><p>Aucune prestation ce mois.<br>Appuyez sur + pour ajouter.</p></div>';
     return;
@@ -625,12 +738,13 @@ function renderList(){
     const isWE=dt.getDay()===0||dt.getDay()===6;
     return`<div><div class="day-label" style="${isWE?'color:var(--blue)':''}">${lbl}${isWE?' 🔵':''}</div>`+
     grp[date].map(p=>{
-      const r=calcSal(p,s);
       const km=(p.kmDep&&p.kmArr)?parseInt(p.kmArr)-parseInt(p.kmDep)+' km':'';
+      const isSun=p.date?isSunday(p.date):false;
+      const isHol=p.date?isHoliday(p.date):false;
       const tags=[
         p.cat==='multi'?'<span class="tag ta">Double équip.</span>':'<span class="tag tb">1 chauf.</span>',
-        p.optDim?'<span class="tag tp">Dimanche</span>':'',
-        p.optFerie?'<span class="tag tr">Férié</span>':'',
+        isSun?'<span class="tag tp">Dimanche</span>':'',
+        isHol?'<span class="tag tr">Férié</span>':'',
         (p.aard&&p.aard.includes('inactivit'))?'<span class="tag tr">Inactif étr.</span>':'',
         p.dagen?`<span class="tag tg">${p.dagen}j</span>`:'',
       ].filter(Boolean).join(' ');
@@ -644,12 +758,9 @@ function renderList(){
             ${(p.plaatsDep||p.plaatsArr||km)?`<div style="font-size:12px;color:var(--text3);margin-top:4px">${[p.plaatsDep,p.plaatsArr].filter(Boolean).join(' → ')}${km?' · '+km:''}</div>`:''}
             ${p.bus?`<div style="font-size:12px;color:var(--text3)">Bus: ${p.bus} · ${p.plaat||'—'} · ${p.pers||'—'} pers.</div>`:''}
           </div>
-          <div style="text-align:right;margin-left:10px;flex-shrink:0">
-            <div style="font-size:16px;font-weight:700;color:var(--green)">${r.total.toFixed(2)} €</div>
-            <div style="display:flex;gap:5px;margin-top:6px;justify-content:flex-end">
-              <button class="btn-del" style="color:var(--blue);border-color:var(--border)" onclick="editPrest(${p.id})">Modifier</button>
-              <button class="btn-del" onclick="delPrest(${p.id})">Suppr.</button>
-            </div>
+          <div style="display:flex;flex-direction:column;gap:5px;margin-left:10px;flex-shrink:0;align-items:flex-end">
+            <button class="btn-del" style="color:var(--blue);border-color:var(--border)" onclick="editPrest(${p.id})">Modifier</button>
+            <button class="btn-del" onclick="delPrest(${p.id})">Suppr.</button>
           </div>
         </div>
       </div>`;
@@ -665,21 +776,37 @@ function renderSalary(){
   document.getElementById('sal-month').textContent=MFR[curM]+' '+curY;
   const data=load(),s=loadS(),el=document.getElementById('sal-detail');
   if(!data.length){el.innerHTML='<div class="empty"><p>Aucune prestation ce mois.</p></div>';return;}
-  const c=calcMonthly(data,s);
+  const c=calcMonthly(data,s,getAllData());
   const rows=c.rows.map(({p,r})=>{
     const dt=new Date(p.date+'T00:00:00');
     const lbl=dt.getDate()+'/'+String(dt.getMonth()+1).padStart(2,'0');
-    return`<div class="srow"><span class="lbl">${lbl} · ${p.aard} (${p.amplitude||'—'})</span><span style="font-weight:600">${r.total.toFixed(2)} €</span></div>`;
+    const brutStr=r.totalBrut.toFixed(2)+' € brut';
+    const netStr=r.totalNet>0?' + '+r.totalNet.toFixed(2)+' € RGPT/net':'';
+    const extras=[...r.extraDetail,...(r.extraDetailNet||[])].join(', ');
+    return`<div class="srow" style="flex-direction:column;align-items:flex-start;gap:2px;padding:8px 0">
+      <div style="display:flex;justify-content:space-between;width:100%">
+        <span class="lbl">${lbl} · ${p.aard}${p.comment?' — '+p.comment:''} (${p.amplitude||'—'})</span>
+        <span style="font-weight:600;white-space:nowrap;margin-left:8px">${r.totalBrut.toFixed(2)} € <span style="font-weight:400;color:var(--text3)">brut</span>${r.totalNet>0?' + '+r.totalNet.toFixed(2)+' € <span style="font-weight:400;color:var(--green)">net</span>':''}</span>
+      </div>
+      ${extras?`<div style="font-size:11px;color:var(--text3)">${extras}</div>`:''}
+    </div>`;
   }).join('');
   el.innerHTML=`
     <div class="sal-sec"><h3>Détail par prestation</h3>${rows}</div>
-    <div class="sal-sec"><h3>Récapitulatif</h3>
+    <div class="sal-sec"><h3>Récapitulatif du mois</h3>
       <div class="srow"><span class="lbl">Salaire de base ONSS</span><span style="font-weight:600">${c.tBase.toFixed(2)} €</span></div>
-      <div class="srow"><span class="lbl">Indemnités RGPT (${s.rgpt}€/h)</span><span style="font-weight:600">${c.tRgpt.toFixed(2)} €</span></div>
-      ${c.tExtras>0?`<div class="srow"><span class="lbl">Suppléments (dim/fériés/étranger)</span><span style="font-weight:600">${c.tExtras.toFixed(2)} €</span></div>`:''}
+      ${c.tExtras>0?`<div class="srow"><span class="lbl">Suppléments bruts (dim/fériés)</span><span style="font-weight:600">${c.tExtras.toFixed(2)} €</span></div>`:''}
       ${c.tAnc>0?`<div class="srow"><span class="lbl">Ancienneté</span><span style="font-weight:600">${c.tAnc.toFixed(2)} €</span></div>`:''}
+      <div class="srow" style="border-top:2px solid var(--border);margin-top:4px;padding-top:8px"><span class="lbl" style="font-weight:600">Total brut ONSS</span><span style="font-weight:700;font-size:16px">${c.totalBrut.toFixed(2)} €</span></div>
+      <div class="srow" style="margin-top:8px"><span class="lbl">RGPT (indemnité nette, ${s.rgpt}€/h)</span><span style="font-weight:600;color:var(--green)">${c.tRgpt.toFixed(2)} €</span></div>
+      ${c.tExtrasNet>0?`<div class="srow"><span class="lbl">Primes nettes (dimanche)</span><span style="font-weight:600;color:var(--green)">${c.tExtrasNet.toFixed(2)} €</span></div>`:''}
+      <div class="srow"><span class="lbl" style="font-weight:600">Total net complémentaire</span><span style="font-weight:700;font-size:16px;color:var(--green)">${c.totalNet.toFixed(2)} €</span></div>
     </div>
-    <div class="sal-tot"><span class="lbl">Total estimé brut</span><span class="val">${c.total.toFixed(2)} €</span></div>
+    <div class="sal-tot" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div style="display:flex;justify-content:space-between"><span>Total brut ONSS</span><span style="font-weight:700">${c.totalBrut.toFixed(2)} €</span></div>
+      <div style="display:flex;justify-content:space-between;opacity:0.7;font-size:13px"><span>+ RGPT & primes nettes</span><span>${c.totalNet.toFixed(2)} €</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,0.2);padding-top:6px;display:flex;justify-content:space-between"><span style="font-size:14px">Total estimé</span><span style="font-weight:700;font-size:20px">${c.total.toFixed(2)} €</span></div>
+    </div>
     <p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">Estimation indicative. Hors cotisations sociales et précompte professionnel.</p>`;
 }
 
@@ -727,14 +854,14 @@ function renderStats(){
     if(p.kmDep&&p.kmArr)totalKm+=parseInt(p.kmArr)-parseInt(p.kmDep);
     totalMins+=p.ampMin||0;
     daySet.add(p.date);
-    if(p.optDim)nbDim++;
-    if(p.optFerie)nbFerie++;
+    if(p.date&&isSunday(p.date))nbDim++;
+    if(p.date&&isHoliday(p.date))nbFerie++;
     if(p.aard&&p.aard.includes('inactivit'))nbEtr++;
     if(p.cat==='multi')nbMulti++;else nbSolo++;
   });
   const h=Math.floor(totalMins/60),m=totalMins%60;
   const s=loadS();
-  const c=calcMonthly(data,s);
+  const c=calcMonthly(data,s,getAllData());
 
   // prestations per weekday
   const wdCount=[0,0,0,0,0,0,0];
@@ -780,7 +907,7 @@ function generatePDF(){
   const rows=data.map(p=>{
     const dt=new Date(p.date+'T00:00:00');
     const ds=dt.toLocaleDateString('fr-BE',{day:'2-digit',month:'2-digit',year:'numeric'});
-    const flags=[p.optDim?'Dimanche':'',p.optFerie?'Férié':''].filter(Boolean).join(', ');
+    const flags=[p.date&&isSunday(p.date)?'Dimanche':'',p.date&&isHoliday(p.date)?'Férié':''].filter(Boolean).join(', ');
     return`<tr>
       <td>${ds}</td>
       <td>${p.aard||''}${p.comment?' — '+p.comment:''}</td>
@@ -894,6 +1021,7 @@ function loadToForm(){
   sv('p-nom',s.nom||'');
   sv('p-s1',s.s1);sv('p-s2',s.s2);sv('p-s3',s.s3);
   sv('p-rgpt',s.rgpt);sv('p-dim',s.dim);
+  sv('p-pdim6',s.primeDim6||DEF.primeDim6);sv('p-pdim12',s.primeDim12||DEF.primeDim12);
   sv('p-etr',s.etr);sv('p-etr6',s.etr6);
   sv('p-gar1',s.gar1);sv('p-gar2',s.gar2);
   sv('p-dep1',s.dep1);sv('p-dep2',s.dep2);
