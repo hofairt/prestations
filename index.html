@@ -198,10 +198,11 @@ select option{background:var(--surface);}
     </div>
     <div class="field">
       <label>Aard prestatie</label>
-      <select id="f-aard">
+      <select id="f-aard" onchange="onAardChange()">
         <option value="">Sélectionner...</option>
         <option>Transport scolaire</option>
         <option>Voyage</option>
+        <option>Jour d'inactivité à l'étranger</option>
         <option>Travail de garage ≤6h30</option>
         <option>Travail de garage 6h31–8h</option>
         <option>Déplacement &lt;6h autre véhicule</option>
@@ -231,7 +232,7 @@ select option{background:var(--surface);}
     <div class="sal-prev" id="sal-prev"><strong id="sp-amt">—</strong><span id="sp-det"></span></div>
 
     <!-- SPECIAL OPTIONS -->
-    <div class="field">
+    <div class="field" id="opts-field">
       <label>Options supplémentaires</label>
       <div style="background:var(--surface2);border-radius:var(--r);padding:10px 14px;">
         <div class="check-row">
@@ -244,11 +245,7 @@ select option{background:var(--surface);}
           <label for="opt-ferie">Jour férié</label>
           <span class="amount">+137,34 €</span>
         </div>
-        <div class="check-row">
-          <input type="checkbox" id="opt-etr" onchange="calcAll()">
-          <label for="opt-etr">Jour d'inactivité à l'étranger</label>
-          <span class="amount">+113,08 €</span>
-        </div>
+
       </div>
     </div>
 
@@ -429,6 +426,11 @@ function calcSal(p,s){
   let base=0,detail='',rgpt=ampH*s.rgpt;
 
   const type=p.aard||'';
+  // Jour d'inactivité à l'étranger: fixed forfait, no RGPT, no dimanche/ferie
+  if(type.includes("inactivit")){
+    const base=s.etr;
+    return{base,rgpt:0,extras:0,anc:0,total:base,detail:'Inactivité étranger forfait '+base.toFixed(2)+'€',extraDetail:[]};
+  }
   // Fixed-rate special types
   if(type.includes('Travail de garage ≤6h30')||type.includes('garage') && ampH<=6.5){
     base=s.gar1; detail=`Garage ≤6h30 → ${s.gar1.toFixed(2)}€`;
@@ -455,7 +457,6 @@ function calcSal(p,s){
   let extras=0,extraDetail=[];
   if(p.optDim){extras+=s.dim;extraDetail.push(`Dim/férié +${s.dim.toFixed(2)}€`);}
   if(p.optFerie){extras+=s.dim;extraDetail.push(`Férié +${s.dim.toFixed(2)}€`);}
-  if(p.optEtr){extras+=s.etr;extraDetail.push(`Inactiv. étr. +${s.etr.toFixed(2)}€`);}
   const anc=s.ancEnabled?s.anc:0;
   if(anc>0)extraDetail.push(`Anc. +${anc.toFixed(2)}€`);
 
@@ -484,8 +485,7 @@ function calcAll(){
   const s=loadS();
   const fp={cat:formCat,ampMin:mins,aard:document.getElementById('f-aard').value,
     optDim:document.getElementById('opt-dim').checked,
-    optFerie:document.getElementById('opt-ferie').checked,
-    optEtr:document.getElementById('opt-etr').checked};
+    optFerie:document.getElementById('opt-ferie').checked};
   const r=calcSal(fp,s);
   const sp=document.getElementById('sal-prev');
   sp.style.display='block';
@@ -497,6 +497,17 @@ function calcAll(){
 // ===================================================
 // FORM
 // ===================================================
+function onAardChange(){
+  const v=document.getElementById('f-aard').value;
+  const isInactif=v.includes('inactivit')||v.toLowerCase().includes('inactivit');
+  const optsField=document.getElementById('opts-field');
+  if(optsField) optsField.style.display=isInactif?'none':'block';
+  if(isInactif){
+    document.getElementById('opt-dim').checked=false;
+    document.getElementById('opt-ferie').checked=false;
+  }
+  calcAll();
+}
 function setCat(c){
   formCat=c;
   document.getElementById('cat-solo').classList.toggle('active',c==='solo');
@@ -511,7 +522,7 @@ function clearForm(){
   document.getElementById('f-aard').value='';
   document.getElementById('f-comment').value='';
   ['f-beg','f-ein','f-kd','f-ka','f-pd','f-pa','f-pers','f-bus','f-plaat','f-dagen'].forEach(id=>document.getElementById(id).value='');
-  ['opt-dim','opt-ferie','opt-etr'].forEach(id=>document.getElementById(id).checked=false);
+  ['opt-dim','opt-ferie'].forEach(id=>document.getElementById(id).checked=false);
   document.getElementById('amp-box').textContent='Amplitude : —';
   document.getElementById('sal-prev').style.display='none';
   document.getElementById('form-title').textContent='Nouvelle prestation';
@@ -532,7 +543,6 @@ function savePrest(){
     cat:formCat,
     optDim:document.getElementById('opt-dim').checked,
     optFerie:document.getElementById('opt-ferie').checked,
-    optEtr:document.getElementById('opt-etr').checked,
     begin:b,einde:e,ampMin,amplitude:mtos(ampMin),
     kmDep:document.getElementById('f-kd').value,
     kmArr:document.getElementById('f-ka').value,
@@ -589,7 +599,6 @@ function editPrest(id){
   document.getElementById('f-dagen').value=found.dagen||'';
   document.getElementById('opt-dim').checked=found.optDim||false;
   document.getElementById('opt-ferie').checked=found.optFerie||false;
-  document.getElementById('opt-etr').checked=found.optEtr||false;
   setCat(found.cat||'solo');
   calcAll();
   showPage('add');
@@ -622,7 +631,7 @@ function renderList(){
         p.cat==='multi'?'<span class="tag ta">Double équip.</span>':'<span class="tag tb">1 chauf.</span>',
         p.optDim?'<span class="tag tp">Dimanche</span>':'',
         p.optFerie?'<span class="tag tr">Férié</span>':'',
-        p.optEtr?'<span class="tag tr">Étranger</span>':'',
+        (p.aard&&p.aard.includes('inactivit'))?'<span class="tag tr">Inactif étr.</span>':'',
         p.dagen?`<span class="tag tg">${p.dagen}j</span>`:'',
       ].filter(Boolean).join(' ');
       return`<div class="card">
@@ -720,7 +729,7 @@ function renderStats(){
     daySet.add(p.date);
     if(p.optDim)nbDim++;
     if(p.optFerie)nbFerie++;
-    if(p.optEtr)nbEtr++;
+    if(p.aard&&p.aard.includes('inactivit'))nbEtr++;
     if(p.cat==='multi')nbMulti++;else nbSolo++;
   });
   const h=Math.floor(totalMins/60),m=totalMins%60;
@@ -771,7 +780,7 @@ function generatePDF(){
   const rows=data.map(p=>{
     const dt=new Date(p.date+'T00:00:00');
     const ds=dt.toLocaleDateString('fr-BE',{day:'2-digit',month:'2-digit',year:'numeric'});
-    const flags=[p.optDim?'Dimanche':'',p.optFerie?'Férié':'',p.optEtr?'Étranger':''].filter(Boolean).join(', ');
+    const flags=[p.optDim?'Dimanche':'',p.optFerie?'Férié':''].filter(Boolean).join(', ');
     return`<tr>
       <td>${ds}</td>
       <td>${p.aard||''}${p.comment?' — '+p.comment:''}</td>
