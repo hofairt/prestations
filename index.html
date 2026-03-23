@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Prestations">
+<meta name="theme-color" content="#1a1a1a">
+<title>Fiche de Prestation — Autocar</title>
+<style>
+:root {
+  --bg:#f5f4f0;--surface:#ffffff;--surface2:#f0efe9;--border:#e2e0d8;--border2:#ccc9be;
+  --text:#1a1a18;--text2:#6b6960;--text3:#9e9b92;
+  --blue:#1e4fad;--blue-bg:#edf2fc;
+  --green:#1a6b3c;--green-bg:#e8f5ee;
+  --amber:#8a5c00;--amber-bg:#fdf3dd;
+  --red:#b52a2a;--red-bg:#fceaea;
+  --purple:#5b3ab5;--purple-bg:#f0ecfc;
+  --r:10px;--rl:14px;--sb:env(safe-area-inset-bottom,0px);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#18181a;--surface:#242428;--surface2:#2e2e33;--border:#3a3a40;--border2:#505058;
+  --text:#f0efeb;--text2:#a0a09a;--text3:#68685f;
+  --blue:#5b8df5;--blue-bg:#1a2540;
+  --green:#4cae78;--green-bg:#0f2b1e;
+  --amber:#f0b832;--amber-bg:#2a2008;
+  --red:#f07070;--red-bg:#2d1010;
+  --purple:#a07cf0;--purple-bg:#1e1530;
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overscroll-behavior:none;}
+.app{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px 10px;position:sticky;top:0;z-index:50;}
+.header-top{display:flex;justify-content:space-between;align-items:center;}
+.header h1{font-size:17px;font-weight:600;letter-spacing:-.3px;}
+.header .sub{font-size:12px;color:var(--text2);margin-top:1px;}
+.pdf-badge{background:var(--amber-bg);color:var(--amber);font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;border:1px solid var(--amber);display:none;}
+
+/* NAV */
+.nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex;position:sticky;top:65px;z-index:40;}
+.nb{flex:1;padding:9px 2px 7px;font-size:10px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.nb svg{width:19px;height:19px;}
+.nb.active{color:var(--text);border-bottom-color:var(--text);}
+
+/* PAGES */
+.page{display:none;flex:1;padding:0 0 calc(20px + var(--sb));}
+.page.active{display:block;}
+.pc{padding:16px;}
+
+/* MONTH NAV */
+.mnav{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.mnav button{width:36px;height:36px;border-radius:50%;border:1px solid var(--border2);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);font-size:16px;}
+.mnav span{flex:1;text-align:center;font-size:15px;font-weight:600;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:13px;margin-bottom:9px;}
+.day-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:8px 0 4px;}
+.tag{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:100px;}
+.tg{background:var(--green-bg);color:var(--green);}
+.tb{background:var(--blue-bg);color:var(--blue);}
+.ta{background:var(--amber-bg);color:var(--amber);}
+.tr{background:var(--red-bg);color:var(--red);}
+.tp{background:var(--purple-bg);color:var(--purple);}
+
+/* FORM */
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px;}
+.field input,.field select{width:100%;padding:10px 12px;border:1px solid var(--border2);border-radius:var(--r);font-size:16px;font-family:inherit;background:var(--surface);color:var(--text);-webkit-appearance:none;appearance:none;}
+.field input:focus,.field select:focus{outline:none;border-color:var(--text);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+
+/* TOGGLES */
+.tgroup{display:flex;background:var(--surface2);border-radius:var(--r);padding:3px;gap:3px;margin-bottom:13px;}
+.tbtn{flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;background:none;color:var(--text2);font-family:inherit;transition:all .15s;}
+.tbtn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+
+/* CHECKBOXES */
+.check-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.check-row:last-child{border-bottom:none;}
+.check-row input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:var(--text);flex-shrink:0;}
+.check-row label{font-size:14px;color:var(--text);cursor:pointer;flex:1;}
+.check-row .amount{font-size:13px;font-weight:600;color:var(--text2);}
+
+/* AMP + SAL BOXES */
+.amp-box{background:var(--blue-bg);border-radius:var(--r);padding:10px 14px;margin-bottom:13px;font-size:14px;font-weight:600;color:var(--blue);}
+.sal-prev{background:var(--green-bg);border-radius:var(--r);padding:10px 14px;margin-bottom:13px;font-size:13px;color:var(--green);display:none;}
+.sal-prev strong{font-size:18px;display:block;}
+
+/* BUTTONS */
+.btn{width:100%;padding:13px;border:none;border-radius:var(--rl);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn:active{opacity:.8;}
+.btn-p{background:var(--text);color:var(--bg);}
+.btn-s{background:var(--surface2);color:var(--text);border:1px solid var(--border2);margin-top:8px;}
+.btn-del{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--red);cursor:pointer;font-family:inherit;}
+
+/* SALARY */
+.sal-sec{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:14px;margin-bottom:12px;}
+.sal-sec h3{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;}
+.srow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.srow:last-child{border-bottom:none;}
+.srow .lbl{color:var(--text2);}
+.sal-tot{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--text);color:var(--bg);border-radius:var(--rl);margin-top:12px;}
+.sal-tot .lbl{font-size:14px;}
+.sal-tot .val{font-size:22px;font-weight:700;}
+
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:14px;}
+.stat-card .sc-lbl{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.stat-card .sc-val{font-size:24px;font-weight:700;color:var(--text);}
+.stat-card .sc-sub{font-size:12px;color:var(--text3);margin-top:2px;}
+.period-row{display:flex;gap:8px;margin-bottom:14px;align-items:center;}
+.period-row label{font-size:12px;color:var(--text2);white-space:nowrap;}
+.period-row input{flex:1;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:14px;font-family:inherit;background:var(--surface);color:var(--text);}
+
+/* PARAMS */
+.ps{margin-bottom:20px;}
+.ps h3{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.info-box{background:var(--blue-bg);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--blue);margin-bottom:14px;line-height:1.5;}
+
+/* MISC */
+.banner{background:var(--amber-bg);border:1px solid var(--amber);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--amber);display:none;}
+.banner strong{display:block;font-size:14px;margin-bottom:2px;}
+.empty{text-align:center;padding:50px 20px;color:var(--text3);}
+.empty svg{width:48px;height:48px;margin-bottom:12px;opacity:.3;}
+.empty p{font-size:14px;}
+.toast{position:fixed;bottom:calc(20px + var(--sb));left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 20px;border-radius:100px;font-size:13px;font-weight:500;opacity:0;transition:all .25s;z-index:200;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+hr{border:none;border-top:1px solid var(--border);margin:12px 0;}
+select option{background:var(--surface);}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1 id="hdr-name">Fiche de prestation</h1>
+      <div class="sub" id="hdr-month"></div>
+    </div>
+    <div class="pdf-badge" id="pdf-badge">PDF disponible</div>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nb active" onclick="showPage('list')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="13" y2="17"/></svg>
+    Liste
+  </button>
+  <button class="nb" onclick="showPage('add')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Ajouter
+  </button>
+  <button class="nb" onclick="showPage('salary')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Salaire
+  </button>
+  <button class="nb" onclick="showPage('stats')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Stats
+  </button>
+  <button class="nb" onclick="showPage('params')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+    Params
+  </button>
+</div>
+
+<!-- LIST -->
+<div class="page active" id="page-list">
+  <div class="pc">
+    <div class="mnav">
+      <button onclick="changeMonth(-1)">&#8592;</button>
+      <span id="list-month"></span>
+      <button onclick="changeMonth(1)">&#8594;</button>
+    </div>
+    <div class="banner" id="pdf-banner"><strong>📄 Fin de mois approche</strong>Vous pouvez générer votre fiche PDF.</div>
+    <div id="pdf-btn-wrap" style="display:none;margin-bottom:12px">
+      <button class="btn btn-p" onclick="generatePDF()">↓ Générer la fiche de prestation (PDF)</button>
+    </div>
+    <div id="prest-list"></div>
+  </div>
+</div>
+
+<!-- ADD -->
+<div class="page" id="page-add">
+  <div class="pc">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h2 id="form-title" style="font-size:16px;font-weight:600">Nouvelle prestation</h2>
+    </div>
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="f-date">
+    </div>
+    <div class="field">
+      <label>Aard prestatie</label>
+      <select id="f-aard">
+        <option value="">Sélectionner...</option>
+        <option>Transport scolaire</option>
+        <option>Voyage</option>
+        <option>Travail de garage ≤6h30</option>
+        <option>Travail de garage 6h31–8h</option>
+        <option>Déplacement &lt;6h autre véhicule</option>
+        <option>Déplacement &gt;6h autre véhicule</option>
+        <option>Prestation &lt;6h à l'étranger</option>
+        <option>Autre</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Commentaire / précision de la mission</label>
+      <input type="text" id="f-comment" placeholder="ex: Bruges – Paris, groupe scolaire...">
+    </div>
+
+    <div class="field">
+      <label>Équipage</label>
+      <div class="tgroup">
+        <button class="tbtn active" id="cat-solo" onclick="setCat('solo')">1 chauffeur</button>
+        <button class="tbtn" id="cat-multi" onclick="setCat('multi')">Double équipage</button>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field"><label>Uur begin</label><input type="time" id="f-beg" oninput="calcAll()"></div>
+      <div class="field"><label>Uur einde</label><input type="time" id="f-ein" oninput="calcAll()"></div>
+    </div>
+    <div class="amp-box" id="amp-box">Amplitude : —</div>
+    <div class="sal-prev" id="sal-prev"><strong id="sp-amt">—</strong><span id="sp-det"></span></div>
+
+    <!-- SPECIAL OPTIONS -->
+    <div class="field">
+      <label>Options supplémentaires</label>
+      <div style="background:var(--surface2);border-radius:var(--r);padding:10px 14px;">
+        <div class="check-row">
+          <input type="checkbox" id="opt-dim" onchange="calcAll()">
+          <label for="opt-dim">Travail du dimanche (sans récup dans 6j)</label>
+          <span class="amount">+137,34 €</span>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="opt-ferie" onchange="calcAll()">
+          <label for="opt-ferie">Jour férié</label>
+          <span class="amount">+137,34 €</span>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="opt-etr" onchange="calcAll()">
+          <label for="opt-etr">Jour d'inactivité à l'étranger</label>
+          <span class="amount">+113,08 €</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field"><label>Km-stand vertrek</label><input type="number" id="f-kd" placeholder="0"></div>
+      <div class="field"><label>Km-stand aankomst</label><input type="number" id="f-ka" placeholder="0"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Plaats vertrek</label><input type="text" id="f-pd" placeholder="Ville départ"></div>
+      <div class="field"><label>Plaats aankomst</label><input type="text" id="f-pa" placeholder="Ville arrivée"></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>Aantal pers.</label><input type="number" id="f-pers" placeholder="—" min="0"></div>
+      <div class="field"><label>Bus Nr</label><input type="text" id="f-bus" placeholder="—"></div>
+      <div class="field"><label>Nr plaat</label><input type="text" id="f-plaat" placeholder="—"></div>
+    </div>
+    <div class="field">
+      <label>Aantal dagen reis <span style="font-weight:400;color:var(--text3)">(mission multi-jours)</span></label>
+      <input type="number" id="f-dagen" placeholder="—" min="1">
+    </div>
+    <button class="btn btn-p" onclick="savePrest()">Enregistrer</button>
+    <button class="btn btn-s" onclick="clearForm()">Effacer</button>
+  </div>
+</div>
+
+<!-- SALARY -->
+<div class="page" id="page-salary">
+  <div class="pc">
+    <div class="mnav">
+      <button onclick="changeMonth(-1)">&#8592;</button>
+      <span id="sal-month"></span>
+      <button onclick="changeMonth(1)">&#8594;</button>
+    </div>
+    <div class="info-box">Calcul conforme CP 140.02 — tarifs au 01/10/2025. Double équipage : heure débutée = heure entière payée.</div>
+    <div id="sal-detail"></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="page" id="page-stats">
+  <div class="pc">
+    <div style="margin-bottom:14px">
+      <div class="tgroup" style="margin-bottom:10px">
+        <button class="tbtn active" id="stats-month-btn" onclick="setStatMode('month')">Mois</button>
+        <button class="tbtn" id="stats-period-btn" onclick="setStatMode('period')">Période libre</button>
+      </div>
+      <div id="stats-month-ctrl">
+        <div class="mnav">
+          <button onclick="changeStatsMonth(-1)">&#8592;</button>
+          <span id="stats-month-label"></span>
+          <button onclick="changeStatsMonth(1)">&#8594;</button>
+        </div>
+      </div>
+      <div id="stats-period-ctrl" style="display:none">
+        <div class="period-row">
+          <label>Du</label>
+          <input type="date" id="st-from" oninput="renderStats()">
+          <label>au</label>
+          <input type="date" id="st-to" oninput="renderStats()">
+        </div>
+      </div>
+    </div>
+    <div id="stats-content"></div>
+  </div>
+</div>
+
+<!-- PARAMS -->
+<div class="page" id="page-params">
+  <div class="pc">
+    <div class="ps">
+      <h3>Identification</h3>
+      <div class="field"><label>Votre nom complet</label><input type="text" id="p-nom" placeholder="Prénom NOM" oninput="saveSettings()"></div>
+    </div>
+    <div class="ps">
+      <h3>Bases salariales — 1 chauffeur</h3>
+      <div class="info-box">Tarifs CP 140.02 au 01/10/2025. Modifiables si nouveau barème.</div>
+      <div class="field"><label>≤ 6h (€)</label><input type="number" id="p-s1" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>6h01 – 12h (€)</label><input type="number" id="p-s2" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Par heure au-delà de 12h (€/h)</label><input type="number" id="p-s3" step="0.01" oninput="saveSettings()"></div>
+    </div>
+    <div class="ps">
+      <h3>Bases salariales — double équipage (€)</h3>
+      <div id="multi-inputs"></div>
+    </div>
+    <div class="ps">
+      <h3>Indemnités & suppléments</h3>
+      <div class="field"><label>Indemnité RGPT (€/h)</label><input type="number" id="p-rgpt" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Sursalaire dimanche / férié (€)</label><input type="number" id="p-dim" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Jour inactivité étranger (€)</label><input type="number" id="p-etr" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Prestation &lt;6h à l'étranger (€)</label><input type="number" id="p-etr6" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Travail garage ≤6h30 (€)</label><input type="number" id="p-gar1" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Travail garage 6h31–8h (€)</label><input type="number" id="p-gar2" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Déplacement &lt;6h autre véhicule (€)</label><input type="number" id="p-dep1" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Déplacement &gt;6h autre véhicule (€)</label><input type="number" id="p-dep2" step="0.01" oninput="saveSettings()"></div>
+    </div>
+    <div class="ps">
+      <h3>Ancienneté</h3>
+      <div class="field"><label>Supplément ancienneté ≥10 ans (€/prestation)</label><input type="number" id="p-anc" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Ancienneté ≥ 10 ans ?</label>
+        <div class="tgroup">
+          <button class="tbtn active" id="anc-no" onclick="setAnc(false)">Non</button>
+          <button class="tbtn" id="anc-yes" onclick="setAnc(true)">Oui (≥ 10 ans)</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-s" onclick="resetDef()">Réinitialiser les tarifs officiels</button>
+  </div>
+</div>
+
+</div><!-- .app -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================================================
+// DEFAULTS (CP 140.02 — 01/10/2025)
+// ===================================================
+const DEF = {
+  s1:83.39, s2:137.34, s3:15.20,
+  rgpt:2.24,
+  dim:137.34,
+  etr:113.08,
+  etr6:113.08,   // prestation <6h entièrement à l'étranger = 113.08 + RGPT
+  gar1:113.08,   // garage ≤6h30
+  gar2:134.92,   // garage 6h31–8h
+  dep1:83.39,    // déplacement <6h autre véhicule
+  dep2:113.08,   // déplacement >6h autre véhicule
+  anc:2.68, ancEnabled:false,
+  multi:{11:111.75,12:123.24,13:134.87,14:146.40,15:157.99,16:169.61,17:181.02,18:192.69,19:204.15,20:215.80,21:227.41}
+};
+
+const MFR=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const DFR=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+
+let curM=new Date().getMonth(), curY=new Date().getFullYear();
+let formCat='solo';
+let statsM=new Date().getMonth(), statsY=new Date().getFullYear();
+let statMode='month';
+
+// ===================================================
+// STORAGE
+// ===================================================
+function gkey(y,m){return`p_${y}_${m}`;}
+function load(y,m){try{return JSON.parse(localStorage.getItem(gkey(y!==undefined?y:curY,m!==undefined?m:curM))||'[]');}catch{return[];}}
+function save(d,y,m){localStorage.setItem(gkey(y!==undefined?y:curY,m!==undefined?m:curM),JSON.stringify(d));}
+function loadS(){try{return JSON.parse(localStorage.getItem('sv3')||'null')||JSON.parse(JSON.stringify(DEF));}catch{return JSON.parse(JSON.stringify(DEF));}}
+function saveSettings(){
+  const s=loadS();
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  s.nom=document.getElementById('p-nom').value;
+  s.s1=g('p-s1')||DEF.s1; s.s2=g('p-s2')||DEF.s2; s.s3=g('p-s3')||DEF.s3;
+  s.rgpt=g('p-rgpt')||DEF.rgpt;
+  s.dim=g('p-dim')||DEF.dim;
+  s.etr=g('p-etr')||DEF.etr;
+  s.etr6=g('p-etr6')||DEF.etr6;
+  s.gar1=g('p-gar1')||DEF.gar1;
+  s.gar2=g('p-gar2')||DEF.gar2;
+  s.dep1=g('p-dep1')||DEF.dep1;
+  s.dep2=g('p-dep2')||DEF.dep2;
+  s.anc=g('p-anc')||DEF.anc;
+  for(let h=11;h<=21;h++){const el=document.getElementById('pm-'+h);if(el)s.multi[h]=parseFloat(el.value)||DEF.multi[h];}
+  localStorage.setItem('sv3',JSON.stringify(s));
+  updateHeader();
+}
+function setAnc(v){
+  const s=loadS();s.ancEnabled=v;localStorage.setItem('sv3',JSON.stringify(s));
+  document.getElementById('anc-no').classList.toggle('active',!v);
+  document.getElementById('anc-yes').classList.toggle('active',v);
+}
+
+// ===================================================
+// SALARY CALCULATION
+// ===================================================
+// Special fixed-rate prestations (don't use amplitude-based table)
+const SPECIAL_TYPES=['Travail de garage ≤6h30','Travail de garage 6h31–8h','Déplacement <6h autre véhicule','Déplacement >6h autre véhicule','Prestation <6h à l\'étranger'];
+
+function calcSal(p,s){
+  const ampH=p.ampMin/60;
+  let base=0,detail='',rgpt=ampH*s.rgpt;
+
+  const type=p.aard||'';
+  // Fixed-rate special types
+  if(type.includes('Travail de garage ≤6h30')||type.includes('garage') && ampH<=6.5){
+    base=s.gar1; detail=`Garage ≤6h30 → ${s.gar1.toFixed(2)}€`;
+  } else if(type.includes('Travail de garage 6h31')||type.includes('garage')){
+    base=s.gar2; detail=`Garage 6h31–8h → ${s.gar2.toFixed(2)}€`;
+  } else if(type.includes('Déplacement <6h')||type.includes('Déplacement <6h autre')){
+    base=s.dep1; detail=`Dépl. <6h autre véh. → ${s.dep1.toFixed(2)}€`;
+  } else if(type.includes('Déplacement >6h')||type.includes('Déplacement >6h autre')){
+    base=s.dep2; detail=`Dépl. >6h autre véh. → ${s.dep2.toFixed(2)}€`;
+  } else if(type.includes('étranger')&&ampH<6){
+    base=s.etr6; detail=`Prest. <6h étranger → ${s.etr6.toFixed(2)}€`;
+    // RGPT still applies on top
+  } else if(p.cat==='solo'){
+    if(ampH<=6){base=s.s1;detail=`1 chauf. ≤6h → ${s.s1.toFixed(2)}€`;}
+    else if(ampH<=12){base=s.s2;detail=`1 chauf. 6h01–12h → ${s.s2.toFixed(2)}€`;}
+    else{const ex=ampH-12;base=s.s2+ex*s.s3;detail=`1 chauf. >12h → ${s.s2.toFixed(2)}+${ex.toFixed(2)}h×${s.s3}€`;}
+  } else {
+    // Double équipage: heure DÉBUTÉE = heure entière (Math.ceil)
+    const h=Math.min(21,Math.max(11,Math.ceil(ampH)));
+    base=s.multi[h]||s.multi[21];
+    detail=`Dbl équip. ${h}h (ceil) → ${base.toFixed(2)}€`;
+  }
+
+  let extras=0,extraDetail=[];
+  if(p.optDim){extras+=s.dim;extraDetail.push(`Dim/férié +${s.dim.toFixed(2)}€`);}
+  if(p.optFerie){extras+=s.dim;extraDetail.push(`Férié +${s.dim.toFixed(2)}€`);}
+  if(p.optEtr){extras+=s.etr;extraDetail.push(`Inactiv. étr. +${s.etr.toFixed(2)}€`);}
+  const anc=s.ancEnabled?s.anc:0;
+  if(anc>0)extraDetail.push(`Anc. +${anc.toFixed(2)}€`);
+
+  const total=base+rgpt+extras+anc;
+  return{base,rgpt,extras,anc,total,detail,extraDetail};
+}
+
+function calcMonthly(data,s){
+  let tBase=0,tRgpt=0,tExtras=0,tAnc=0;
+  const rows=data.map(p=>{const r=calcSal(p,s);tBase+=r.base;tRgpt+=r.rgpt;tExtras+=r.extras;tAnc+=r.anc;return{p,r};});
+  return{tBase,tRgpt,tExtras,tAnc,total:tBase+tRgpt+tExtras+tAnc,rows};
+}
+
+// ===================================================
+// TIME UTILS
+// ===================================================
+function pt(t){if(!t)return null;const[h,m]=t.split(':').map(Number);return h*60+m;}
+function mtos(mins){if(mins<=0)return'—';const h=Math.floor(mins/60),m=mins%60;return h+'h'+(m>0?String(m).padStart(2,'0'):'');}
+
+function calcAll(){
+  const b=pt(document.getElementById('f-beg').value);
+  const e=pt(document.getElementById('f-ein').value);
+  if(b===null||e===null){document.getElementById('amp-box').textContent='Amplitude : —';document.getElementById('sal-prev').style.display='none';return 0;}
+  let mins=e-b; if(mins<0)mins+=1440;
+  document.getElementById('amp-box').textContent='Amplitude : '+mtos(mins);
+  const s=loadS();
+  const fp={cat:formCat,ampMin:mins,aard:document.getElementById('f-aard').value,
+    optDim:document.getElementById('opt-dim').checked,
+    optFerie:document.getElementById('opt-ferie').checked,
+    optEtr:document.getElementById('opt-etr').checked};
+  const r=calcSal(fp,s);
+  const sp=document.getElementById('sal-prev');
+  sp.style.display='block';
+  document.getElementById('sp-amt').textContent=r.total.toFixed(2)+' €';
+  document.getElementById('sp-det').textContent=r.detail+(r.extraDetail.length?' · '+r.extraDetail.join(', '):'');
+  return mins;
+}
+
+// ===================================================
+// FORM
+// ===================================================
+function setCat(c){
+  formCat=c;
+  document.getElementById('cat-solo').classList.toggle('active',c==='solo');
+  document.getElementById('cat-multi').classList.toggle('active',c==='multi');
+  calcAll();
+}
+function setDefDate(){
+  const t=new Date();
+  document.getElementById('f-date').value=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+}
+function clearForm(){
+  document.getElementById('f-aard').value='';
+  document.getElementById('f-comment').value='';
+  ['f-beg','f-ein','f-kd','f-ka','f-pd','f-pa','f-pers','f-bus','f-plaat','f-dagen'].forEach(id=>document.getElementById(id).value='');
+  ['opt-dim','opt-ferie','opt-etr'].forEach(id=>document.getElementById(id).checked=false);
+  document.getElementById('amp-box').textContent='Amplitude : —';
+  document.getElementById('sal-prev').style.display='none';
+  document.getElementById('form-title').textContent='Nouvelle prestation';
+  editingId=null;
+  setCat('solo');
+}
+let editingId=null;
+function savePrest(){
+  const dv=document.getElementById('f-date').value;
+  if(!dv){showToast('Veuillez sélectionner une date');return;}
+  const b=document.getElementById('f-beg').value, e=document.getElementById('f-ein').value;
+  let ampMin=0;
+  if(b&&e){ampMin=pt(e)-pt(b);if(ampMin<0)ampMin+=1440;}
+  const p={
+    id:editingId||Date.now(),date:dv,
+    aard:document.getElementById('f-aard').value||'Service',
+    comment:document.getElementById('f-comment').value,
+    cat:formCat,
+    optDim:document.getElementById('opt-dim').checked,
+    optFerie:document.getElementById('opt-ferie').checked,
+    optEtr:document.getElementById('opt-etr').checked,
+    begin:b,einde:e,ampMin,amplitude:mtos(ampMin),
+    kmDep:document.getElementById('f-kd').value,
+    kmArr:document.getElementById('f-ka').value,
+    plaatsDep:document.getElementById('f-pd').value,
+    plaatsArr:document.getElementById('f-pa').value,
+    pers:document.getElementById('f-pers').value,
+    bus:document.getElementById('f-bus').value,
+    plaat:document.getElementById('f-plaat').value,
+    dagen:document.getElementById('f-dagen').value,
+  };
+  const[y,mo]=dv.split('-').map(Number); const mi=mo-1;
+  let data=load(y,mi);
+  if(editingId){
+    // Remove old entry (could be in any month if date changed)
+    const allKeys=Object.keys(localStorage).filter(k=>k.startsWith('p_'));
+    allKeys.forEach(k=>{
+      let d=JSON.parse(localStorage.getItem(k)||'[]');
+      const filtered=d.filter(x=>x.id!==editingId);
+      if(filtered.length!==d.length) localStorage.setItem(k,JSON.stringify(filtered));
+    });
+    data=load(y,mi);
+  }
+  data.push(p);
+  data.sort((a,b)=>a.date.localeCompare(b.date)||(a.begin||'').localeCompare(b.begin||''));
+  save(data,y,mi);
+  curY=y;curM=mi;
+  const msg=editingId?'Prestation modifiée ✓':'Prestation enregistrée ✓';
+  clearForm();showToast(msg);showPage('list');
+}
+function editPrest(id){
+  // Find the prestation across all months
+  const allKeys=Object.keys(localStorage).filter(k=>k.startsWith('p_'));
+  let found=null;
+  allKeys.forEach(k=>{
+    const d=JSON.parse(localStorage.getItem(k)||'[]');
+    const f=d.find(x=>x.id===id);
+    if(f)found=f;
+  });
+  if(!found)return;
+  editingId=id;
+  document.getElementById('form-title').textContent='Modifier la prestation';
+  document.getElementById('f-date').value=found.date;
+  document.getElementById('f-aard').value=found.aard||'';
+  document.getElementById('f-comment').value=found.comment||'';
+  document.getElementById('f-beg').value=found.begin||'';
+  document.getElementById('f-ein').value=found.einde||'';
+  document.getElementById('f-kd').value=found.kmDep||'';
+  document.getElementById('f-ka').value=found.kmArr||'';
+  document.getElementById('f-pd').value=found.plaatsDep||'';
+  document.getElementById('f-pa').value=found.plaatsArr||'';
+  document.getElementById('f-pers').value=found.pers||'';
+  document.getElementById('f-bus').value=found.bus||'';
+  document.getElementById('f-plaat').value=found.plaat||'';
+  document.getElementById('f-dagen').value=found.dagen||'';
+  document.getElementById('opt-dim').checked=found.optDim||false;
+  document.getElementById('opt-ferie').checked=found.optFerie||false;
+  document.getElementById('opt-etr').checked=found.optEtr||false;
+  setCat(found.cat||'solo');
+  calcAll();
+  showPage('add');
+}
+function delPrest(id){
+  if(!confirm('Supprimer cette prestation ?'))return;
+  save(load().filter(p=>p.id!==id));renderList();showToast('Supprimée');
+}
+
+// ===================================================
+// RENDER LIST
+// ===================================================
+function renderList(){
+  const data=load(),s=loadS(),el=document.getElementById('prest-list');
+  if(!data.length){
+    el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="13" y2="17"/></svg><p>Aucune prestation ce mois.<br>Appuyez sur + pour ajouter.</p></div>';
+    return;
+  }
+  let grp={};
+  data.forEach(p=>{if(!grp[p.date])grp[p.date]=[];grp[p.date].push(p);});
+  el.innerHTML=Object.keys(grp).sort().map(date=>{
+    const dt=new Date(date+'T00:00:00');
+    const lbl=DFR[dt.getDay()]+' '+dt.getDate()+' '+MFR[dt.getMonth()].substring(0,3)+'.';
+    const isWE=dt.getDay()===0||dt.getDay()===6;
+    return`<div><div class="day-label" style="${isWE?'color:var(--blue)':''}">${lbl}${isWE?' 🔵':''}</div>`+
+    grp[date].map(p=>{
+      const r=calcSal(p,s);
+      const km=(p.kmDep&&p.kmArr)?parseInt(p.kmArr)-parseInt(p.kmDep)+' km':'';
+      const tags=[
+        p.cat==='multi'?'<span class="tag ta">Double équip.</span>':'<span class="tag tb">1 chauf.</span>',
+        p.optDim?'<span class="tag tp">Dimanche</span>':'',
+        p.optFerie?'<span class="tag tr">Férié</span>':'',
+        p.optEtr?'<span class="tag tr">Étranger</span>':'',
+        p.dagen?`<span class="tag tg">${p.dagen}j</span>`:'',
+      ].filter(Boolean).join(' ');
+      return`<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600">${p.aard}</div>
+            ${p.comment?`<div style="font-size:13px;color:var(--text2);margin-top:1px;font-style:italic">${p.comment}</div>`:''}
+            <div style="font-size:13px;color:var(--text2);margin-top:2px">${p.begin||'?'}–${p.einde||'?'} · <strong>${p.amplitude||'—'}</strong></div>
+            <div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">${tags}</div>
+            ${(p.plaatsDep||p.plaatsArr||km)?`<div style="font-size:12px;color:var(--text3);margin-top:4px">${[p.plaatsDep,p.plaatsArr].filter(Boolean).join(' → ')}${km?' · '+km:''}</div>`:''}
+            ${p.bus?`<div style="font-size:12px;color:var(--text3)">Bus: ${p.bus} · ${p.plaat||'—'} · ${p.pers||'—'} pers.</div>`:''}
+          </div>
+          <div style="text-align:right;margin-left:10px;flex-shrink:0">
+            <div style="font-size:16px;font-weight:700;color:var(--green)">${r.total.toFixed(2)} €</div>
+            <div style="display:flex;gap:5px;margin-top:6px;justify-content:flex-end">
+              <button class="btn-del" style="color:var(--blue);border-color:var(--border)" onclick="editPrest(${p.id})">Modifier</button>
+              <button class="btn-del" onclick="delPrest(${p.id})">Suppr.</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  }).join('');
+  updateHeader();
+}
+
+// ===================================================
+// RENDER SALARY
+// ===================================================
+function renderSalary(){
+  document.getElementById('sal-month').textContent=MFR[curM]+' '+curY;
+  const data=load(),s=loadS(),el=document.getElementById('sal-detail');
+  if(!data.length){el.innerHTML='<div class="empty"><p>Aucune prestation ce mois.</p></div>';return;}
+  const c=calcMonthly(data,s);
+  const rows=c.rows.map(({p,r})=>{
+    const dt=new Date(p.date+'T00:00:00');
+    const lbl=dt.getDate()+'/'+String(dt.getMonth()+1).padStart(2,'0');
+    return`<div class="srow"><span class="lbl">${lbl} · ${p.aard} (${p.amplitude||'—'})</span><span style="font-weight:600">${r.total.toFixed(2)} €</span></div>`;
+  }).join('');
+  el.innerHTML=`
+    <div class="sal-sec"><h3>Détail par prestation</h3>${rows}</div>
+    <div class="sal-sec"><h3>Récapitulatif</h3>
+      <div class="srow"><span class="lbl">Salaire de base ONSS</span><span style="font-weight:600">${c.tBase.toFixed(2)} €</span></div>
+      <div class="srow"><span class="lbl">Indemnités RGPT (${s.rgpt}€/h)</span><span style="font-weight:600">${c.tRgpt.toFixed(2)} €</span></div>
+      ${c.tExtras>0?`<div class="srow"><span class="lbl">Suppléments (dim/fériés/étranger)</span><span style="font-weight:600">${c.tExtras.toFixed(2)} €</span></div>`:''}
+      ${c.tAnc>0?`<div class="srow"><span class="lbl">Ancienneté</span><span style="font-weight:600">${c.tAnc.toFixed(2)} €</span></div>`:''}
+    </div>
+    <div class="sal-tot"><span class="lbl">Total estimé brut</span><span class="val">${c.total.toFixed(2)} €</span></div>
+    <p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">Estimation indicative. Hors cotisations sociales et précompte professionnel.</p>`;
+}
+
+// ===================================================
+// STATS
+// ===================================================
+function setStatMode(m){
+  statMode=m;
+  document.getElementById('stats-month-btn').classList.toggle('active',m==='month');
+  document.getElementById('stats-period-btn').classList.toggle('active',m==='period');
+  document.getElementById('stats-month-ctrl').style.display=m==='month'?'block':'none';
+  document.getElementById('stats-period-ctrl').style.display=m==='period'?'block':'none';
+  renderStats();
+}
+function changeStatsMonth(d){
+  statsM+=d; if(statsM<0){statsM=11;statsY--;}if(statsM>11){statsM=0;statsY++;}
+  document.getElementById('stats-month-label').textContent=MFR[statsM]+' '+statsY;
+  renderStats();
+}
+function getStatsData(){
+  if(statMode==='month') return load(statsY,statsM);
+  const from=document.getElementById('st-from').value;
+  const to=document.getElementById('st-to').value;
+  if(!from||!to)return[];
+  // Collect all months in range
+  const fd=new Date(from),td=new Date(to);
+  let all=[];
+  let y=fd.getFullYear(),m=fd.getMonth();
+  while(y<td.getFullYear()||(y===td.getFullYear()&&m<=td.getMonth())){
+    all=all.concat(load(y,m).filter(p=>p.date>=from&&p.date<=to));
+    m++;if(m>11){m=0;y++;}
+  }
+  return all;
+}
+function renderStats(){
+  document.getElementById('stats-month-label').textContent=MFR[statsM]+' '+statsY;
+  const data=getStatsData();
+  const el=document.getElementById('stats-content');
+  if(!data.length){el.innerHTML='<div class="empty"><p>Aucune prestation sur cette période.</p></div>';return;}
+
+  let totalKm=0,totalMins=0,nbPrest=0,nbDim=0,nbFerie=0,nbEtr=0,nbSolo=0,nbMulti=0;
+  const daySet=new Set();
+  data.forEach(p=>{
+    nbPrest++;
+    if(p.kmDep&&p.kmArr)totalKm+=parseInt(p.kmArr)-parseInt(p.kmDep);
+    totalMins+=p.ampMin||0;
+    daySet.add(p.date);
+    if(p.optDim)nbDim++;
+    if(p.optFerie)nbFerie++;
+    if(p.optEtr)nbEtr++;
+    if(p.cat==='multi')nbMulti++;else nbSolo++;
+  });
+  const h=Math.floor(totalMins/60),m=totalMins%60;
+  const s=loadS();
+  const c=calcMonthly(data,s);
+
+  // prestations per weekday
+  const wdCount=[0,0,0,0,0,0,0];
+  data.forEach(p=>{const dt=new Date(p.date+'T00:00:00');wdCount[dt.getDay()]++;});
+  const maxWd=Math.max(...wdCount)||1;
+
+  el.innerHTML=`
+    <div class="stat-grid">
+      <div class="stat-card"><div class="sc-lbl">Km parcourus</div><div class="sc-val">${totalKm.toLocaleString('fr-BE')}</div><div class="sc-sub">km</div></div>
+      <div class="stat-card"><div class="sc-lbl">Heures prestées</div><div class="sc-val">${h}h${m>0?String(m).padStart(2,'0'):''}</div><div class="sc-sub">amplitude totale</div></div>
+      <div class="stat-card"><div class="sc-lbl">Prestations</div><div class="sc-val">${nbPrest}</div><div class="sc-sub">${daySet.size} jours</div></div>
+      <div class="stat-card"><div class="sc-lbl">Salaire estimé</div><div class="sc-val" style="font-size:18px">${c.total.toFixed(0)} €</div><div class="sc-sub">brut</div></div>
+    </div>
+    <div class="sal-sec">
+      <h3>Répartition équipage</h3>
+      <div class="srow"><span class="lbl">1 chauffeur</span><span style="font-weight:600">${nbSolo} prest.</span></div>
+      <div class="srow"><span class="lbl">Double équipage</span><span style="font-weight:600">${nbMulti} prest.</span></div>
+      ${nbDim?`<div class="srow"><span class="lbl">Dimanche (sursalaire)</span><span style="font-weight:600">${nbDim}×</span></div>`:''}
+      ${nbFerie?`<div class="srow"><span class="lbl">Jours fériés</span><span style="font-weight:600">${nbFerie}×</span></div>`:''}
+      ${nbEtr?`<div class="srow"><span class="lbl">Étranger</span><span style="font-weight:600">${nbEtr}×</span></div>`:''}
+    </div>
+    <div class="sal-sec">
+      <h3>Prestations par jour de la semaine</h3>
+      ${['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'].map((d,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+          <span style="font-size:12px;color:var(--text2);width:28px">${d}</span>
+          <div style="flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${Math.round(wdCount[i]/maxWd*100)}%;background:${i===0||i===6?'var(--blue)':'var(--text)'};border-radius:4px;"></div>
+          </div>
+          <span style="font-size:12px;font-weight:600;width:20px;text-align:right">${wdCount[i]}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ===================================================
+// PDF — PRESTATIONS UNIQUEMENT
+// ===================================================
+function generatePDF(){
+  const data=load(),s=loadS();
+  if(!data.length){showToast('Aucune prestation ce mois');return;}
+  const nom=s.nom||'Nom non défini';
+  const monthLabel=MFR[curM]+' '+curY;
+  const rows=data.map(p=>{
+    const dt=new Date(p.date+'T00:00:00');
+    const ds=dt.toLocaleDateString('fr-BE',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const flags=[p.optDim?'Dimanche':'',p.optFerie?'Férié':'',p.optEtr?'Étranger':''].filter(Boolean).join(', ');
+    return`<tr>
+      <td>${ds}</td>
+      <td>${p.aard||''}${p.comment?' — '+p.comment:''}</td>
+      <td style="text-align:center">${p.cat==='multi'?'✓':''}</td>
+      <td>${p.kmDep||''}</td><td>${p.kmArr||''}</td>
+      <td>${p.plaatsDep||''}</td><td>${p.plaatsArr||''}</td>
+      <td>${p.begin||''}</td><td>${p.einde||''}</td>
+      <td><strong>${p.amplitude||''}</strong></td>
+      <td>${p.pers||''}</td>
+      <td>${p.dagen||''}</td>
+      <td>${p.bus||''}</td>
+      <td>${p.plaat||''}</td>
+      ${flags?`<td>${flags}</td>`:'<td></td>'}
+    </tr>`;
+  }).join('');
+
+  const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+  <title>Fiche prestation — ${nom} — ${monthLabel}</title>
+  <style>
+    @page{size:A4 landscape;margin:12mm;}
+    body{font-family:Arial,sans-serif;font-size:9px;color:#111;}
+    h1{font-size:15px;margin:0 0 2px;}
+    .sub{font-size:11px;color:#555;margin-bottom:12px;}
+    table{width:100%;border-collapse:collapse;margin-top:8px;}
+    th{background:#1a1a18;color:#fff;padding:5px 4px;text-align:left;font-size:8px;white-space:nowrap;}
+    td{padding:4px 3px;border-bottom:1px solid #e0e0e0;vertical-align:top;white-space:nowrap;}
+    tr:nth-child(even) td{background:#f8f8f6;}
+    .footer{margin-top:14px;font-size:8px;color:#999;}
+    .sig{margin-top:30px;display:flex;gap:60px;}
+    .sig div{flex:1;}
+    .sig .line{border-top:1px solid #999;margin-top:40px;padding-top:4px;font-size:8px;color:#666;}
+  </style></head><body>
+  <h1>${nom}</h1>
+  <div class="sub">Fiche de prestation — ${monthLabel}</div>
+  <table>
+    <thead><tr>
+      <th>Datum</th><th>Aard prestatie</th><th>Dbl</th>
+      <th>Km vert.</th><th>Km aankomst</th>
+      <th>Plaats vertrek</th><th>Plaats aankomst</th>
+      <th>Uur begin</th><th>Uur einde</th><th>Amplitude</th>
+      <th>Pers.</th><th>Dagen</th><th>Bus Nr</th><th>Nr plaat</th><th>Options</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="sig">
+    <div><div class="line">Date et signature du chauffeur</div></div>
+    <div><div class="line">Date et signature employeur</div></div>
+  </div>
+  <div class="footer">Document généré le ${new Date().toLocaleDateString('fr-BE')} — Fiche de prestations uniquement</div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`prestation_${nom.replace(/\s+/g,'_')}_${curY}-${String(curM+1).padStart(2,'0')}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Fichier généré — imprimez en PDF');
+}
+
+// ===================================================
+// NAV & HEADER
+// ===================================================
+function showPage(p){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(e=>e.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const idx=['list','add','salary','stats','params'].indexOf(p);
+  document.querySelectorAll('.nb')[idx].classList.add('active');
+  if(p==='list')renderList();
+  if(p==='salary')renderSalary();
+  if(p==='stats')renderStats();
+  if(p==='add')setDefDate();
+}
+function changeMonth(d){
+  curM+=d;if(curM<0){curM=11;curY--;}if(curM>11){curM=0;curY++;}
+  updateHeader();renderList();
+  if(document.getElementById('page-salary').classList.contains('active'))renderSalary();
+}
+function updateHeader(){
+  const s=loadS();
+  document.getElementById('hdr-name').textContent=s.nom||'Fiche de prestation';
+  document.getElementById('hdr-month').textContent=MFR[curM]+' '+curY;
+  document.getElementById('list-month').textContent=MFR[curM]+' '+curY;
+  const today=new Date();
+  const last=new Date(curY,curM+1,0).getDate();
+  const isCur=today.getMonth()===curM&&today.getFullYear()===curY;
+  const showPdf=isCur&&today.getDate()>=last-4;
+  document.getElementById('pdf-banner').style.display=showPdf?'block':'none';
+  document.getElementById('pdf-btn-wrap').style.display=load().length?'block':'none';
+  document.getElementById('pdf-badge').style.display=showPdf?'inline':'none';
+}
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ===================================================
+// PARAMS INIT
+// ===================================================
+function resetDef(){
+  if(!confirm('Réinitialiser tous les tarifs officiels CP 140.02 ?'))return;
+  const s=loadS();Object.assign(s,JSON.parse(JSON.stringify(DEF)));
+  localStorage.setItem('sv3',JSON.stringify(s));loadToForm();showToast('Tarifs réinitialisés');
+}
+function loadToForm(){
+  const s=loadS();
+  const sv=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  sv('p-nom',s.nom||'');
+  sv('p-s1',s.s1);sv('p-s2',s.s2);sv('p-s3',s.s3);
+  sv('p-rgpt',s.rgpt);sv('p-dim',s.dim);
+  sv('p-etr',s.etr);sv('p-etr6',s.etr6);
+  sv('p-gar1',s.gar1);sv('p-gar2',s.gar2);
+  sv('p-dep1',s.dep1);sv('p-dep2',s.dep2);
+  sv('p-anc',s.anc);
+  const ae=s.ancEnabled||false;
+  document.getElementById('anc-no').classList.toggle('active',!ae);
+  document.getElementById('anc-yes').classList.toggle('active',ae);
+  // Multi
+  const wrap=document.getElementById('multi-inputs');wrap.innerHTML='';
+  const mi=s.multi||DEF.multi;
+  for(let h=11;h<=21;h++){
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
+    row.innerHTML=`<label style="font-size:13px;color:var(--text2)">${h}h</label>
+      <input id="pm-${h}" type="number" step="0.01" value="${mi[h]||DEF.multi[h]}"
+        style="width:100px;padding:7px 10px;border:1px solid var(--border2);border-radius:8px;font-size:14px;background:var(--surface);color:var(--text);font-family:inherit"
+        oninput="saveSettings()">`;
+    wrap.appendChild(row);
+  }
+}
+
+// ===================================================
+// INIT
+// ===================================================
+function init(){
+  loadToForm();updateHeader();renderList();setDefDate();
+  document.getElementById('stats-month-label').textContent=MFR[statsM]+' '+statsY;
+}
+init();
+</script>
+</body>
+</html>
