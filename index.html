@@ -234,7 +234,7 @@ select option{background:var(--surface);}
     <!-- AUTO INFO BOX -->
     <div id="info-sunday" style="display:none;background:var(--purple-bg);border-radius:var(--r);padding:10px 14px;margin-bottom:13px;font-size:13px;color:var(--purple);line-height:1.5">
       <strong style="display:block;margin-bottom:2px">Dimanche détecté</strong>
-      Prime 30/50 € nette automatique. Le sursalaire +137,34 € sera calculé automatiquement selon si vous avez un jour off ou une inactivité étranger dans les 6 jours suivants.
+      Prime 30/50 € brute automatique. Le sursalaire +137,34 € sera calculé automatiquement selon si vous avez un jour off ou une inactivité étranger dans les 6 jours suivants.
     </div>
     <div id="info-holiday" style="display:none;background:var(--red-bg);border-radius:var(--r);padding:10px 14px;margin-bottom:13px;font-size:13px;color:var(--red);line-height:1.5">
       <strong style="display:block;margin-bottom:2px">Jour férié belge détecté</strong>
@@ -325,8 +325,8 @@ select option{background:var(--surface);}
     <div class="ps">
       <h3>Indemnités & suppléments</h3>
       <div class="field"><label>Indemnité RGPT (€/h)</label><input type="number" id="p-rgpt" step="0.01" oninput="saveSettings()"></div>
-      <div class="field"><label>Prime dimanche &lt;6h (€, net)</label><input type="number" id="p-pdim6" step="0.01" oninput="saveSettings()"></div>
-      <div class="field"><label>Prime dimanche ≥6h (€, net)</label><input type="number" id="p-pdim12" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Prime dimanche &lt;6h (€, brut)</label><input type="number" id="p-pdim6" step="0.01" oninput="saveSettings()"></div>
+      <div class="field"><label>Prime dimanche ≥6h (€, brut)</label><input type="number" id="p-pdim12" step="0.01" oninput="saveSettings()"></div>
       <div class="field"><label>Sursalaire dimanche / férié (€)</label><input type="number" id="p-dim" step="0.01" oninput="saveSettings()"></div>
       <div class="field"><label>Jour inactivité étranger (€)</label><input type="number" id="p-etr" step="0.01" oninput="saveSettings()"></div>
       <div class="field"><label>Prestation &lt;6h à l'étranger (€)</label><input type="number" id="p-etr6" step="0.01" oninput="saveSettings()"></div>
@@ -530,11 +530,12 @@ function calcSal(p,s,allData){
 
   // NET extras (not ONSS)
   let extrasNet=0,extraDetailNet=[];
-  // Prime dimanche: ALWAYS on sundays, 30€ <6h, 50€ >=6h
+
+  // Prime dimanche: ALWAYS on sundays, 30€ <6h, 50€ >=6h — BRUT (ONSS)
   if(dayIsSunday){
     const prime=ampH<6?s.primeDim6:s.primeDim12;
-    extrasNet+=prime;
-    extraDetailNet.push('Prime dim. '+prime.toFixed(2)+'€ net (systématique)');
+    extras+=prime;
+    extraDetail.push('Prime dim. '+prime.toFixed(2)+'€ brut (systématique)');
   }
 
   const anc=s.ancEnabled?s.anc:0;
